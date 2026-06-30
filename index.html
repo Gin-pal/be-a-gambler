@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>트럼프 카드 점수 게임</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>트럼프 카드 점수 게임</h1>
+    <section class="status-card">
+      <div class="status-row">
+        <div>
+          <strong>현재 점수</strong>
+          <p id="score">300</p>
+        </div>
+        <div>
+          <strong>남은 카드</strong>
+          <p id="remaining">20</p>
+        </div>
+      </div>
+      <div class="status-row">
+        <div>
+          <strong>최근 카드</strong>
+          <p id="current-card">-</p>
+        </div>
+        <div>
+          <strong>결과</strong>
+          <p id="message">게임을 시작하려면 카드를 뒤집어 보세요.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <button id="flipBtn">카드 뒤집기</button>
+      <button id="autoBtn">자동 진행</button>
+      <button id="restartBtn">다시 시작</button>
+    </section>
+
+    <section class="log-card">
+      <h2>게임 기록</h2>
+      <div id="log"></div>
+    </section>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
