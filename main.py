@@ -17,26 +17,27 @@ class Card:
 def build_deck() -> List[Card]:
     deck: List[Card] = []
 
-    # 10 normal cards
+    # 15 normal cards
     for rank in ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J"]:
         for suit in ["♠", "♥", "♦", "♣"]:
             deck.append(Card(rank, suit))
-            if len(deck) >= 10:
+            if len(deck) >= 15:
                 break
-        if len(deck) >= 10:
+        if len(deck) >= 15:
             break
 
-    # Special cards to make 20 total cards
-    for _ in range(4):
+    # Special cards to make 30 total cards
+    for _ in range(6):
         deck.append(Card("A"))
-    for _ in range(3):
+    for _ in range(4):
         deck.append(Card("K"))
-    for _ in range(2):
+    for _ in range(3):
         deck.append(Card("Q"))
-    deck.append(Card("Joker"))
+    for _ in range(2):
+        deck.append(Card("Joker"))
 
-    # If deck has more than 20 cards due to the loop, trim it
-    return deck[:20]
+    # If deck has more than 30 cards due to the loop, trim it
+    return deck[:30]
 
 
 def score_for_card(card: Card) -> int:

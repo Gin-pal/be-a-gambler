@@ -12,6 +12,12 @@ let deck = [];
 let score = 300;
 let autoMode = false;
 let running = false;
+let peekUsedCount = 0;
+let replaceUsedCount = 0;
+const PEEK_COST = 500;
+const PEEK_LIMIT = 3;
+const REPLACE_COST = 300;
+const REPLACE_LIMIT = 5;
 
 function buildDeck() {
   const deck = [];
@@ -19,16 +25,16 @@ function buildDeck() {
   for (const rank of normalRanks) {
     for (const suit of ["♠", "♥", "♦", "♣"]) {
       deck.push({ rank, suit });
-      if (deck.length >= 10) break;
+      if (deck.length >= 15) break;
     }
-    if (deck.length >= 10) break;
+    if (deck.length >= 15) break;
   }
 
-  for (let i = 0; i < 4; i += 1) deck.push({ rank: "A" });
-  for (let i = 0; i < 3; i += 1) deck.push({ rank: "K" });
-  for (let i = 0; i < 2; i += 1) deck.push({ rank: "Q" });
-  deck.push({ rank: "Joker" });
-  return deck.slice(0, 20);
+  for (let i = 0; i < 6; i += 1) deck.push({ rank: "A" });
+  for (let i = 0; i < 4; i += 1) deck.push({ rank: "K" });
+  for (let i = 0; i < 3; i += 1) deck.push({ rank: "Q" });
+  for (let i = 0; i < 2; i += 1) deck.push({ rank: "Joker" });
+  return deck.slice(0, 30);
 }
 
 function shuffle(array) {
@@ -53,6 +59,17 @@ function displayCard(card) {
 function updateUI() {
   scoreEl.textContent = score;
   remainingEl.textContent = deck.length;
+  updateShopUI();
+}
+
+function updateShopUI() {
+  const peekBtn = document.getElementById("peekBtn");
+  const replaceBtn = document.getElementById("replaceBtn");
+  document.getElementById("peekUsed").textContent = peekUsedCount;
+  document.getElementById("replaceUsed").textContent = replaceUsedCount;
+  
+  peekBtn.disabled = !running || peekUsedCount >= PEEK_LIMIT || score < PEEK_COST;
+  replaceBtn.disabled = !running || replaceUsedCount >= REPLACE_LIMIT || score < REPLACE_COST;
 }
 
 function logLine(text) {
@@ -130,6 +147,32 @@ function flipCard() {
   }, 380);
 }
 
+function peekCard() {
+  if (!running || peekUsedCount >= PEEK_LIMIT || score < PEEK_COST || deck.length === 0) return;
+  score -= PEEK_COST;
+  peekUsedCount += 1;
+  const nextCard = deck[deck.length - 1];
+  const display = displayCard(nextCard);
+  messageEl.textContent = `다음 카드는 ${display}입니다!`;
+  logLine(`[상점] 카드 확인 (${display}) - 점수 -${PEEK_COST}점`);
+  updateUI();
+}
+
+function replaceCard() {
+  if (!running || replaceUsedCount >= REPLACE_LIMIT || score < REPLACE_COST || deck.length === 0) return;
+  score -= REPLACE_COST;
+  replaceUsedCount += 1;
+  const oldIndex = deck.length - 1;
+  const allCards = buildDeck();
+  shuffle(allCards);
+  const newCard = allCards[0];
+  deck[oldIndex] = newCard;
+  const display = displayCard(newCard);
+  messageEl.textContent = `다음 카드가 ${display}(으)로 교체되었습니다!`;
+  logLine(`[상점] 카드 교체 - 점수 -${REPLACE_COST}점`);
+  updateUI();
+}
+
 function autoPlay() {
   if (!running) return;
   let timeout = 0;
@@ -148,6 +191,8 @@ function startGame() {
   shuffle(deck);
   score = 300;
   running = true;
+  peekUsedCount = 0;
+  replaceUsedCount = 0;
   flipBtn.style.display = 'none';
   autoBtn.disabled = false;
   if (cardContainer) cardContainer.classList.remove("is-flipped");
@@ -195,6 +240,14 @@ restartBtn.addEventListener("click", () => {
   autoMode = false;
   autoBtn.textContent = "자동 진행";
   startGame();
+});
+
+document.getElementById("peekBtn").addEventListener("click", () => {
+  peekCard();
+});
+
+document.getElementById("replaceBtn").addEventListener("click", () => {
+  replaceCard();
 });
 
 startGame();
