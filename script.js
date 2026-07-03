@@ -1,6 +1,7 @@
 const scoreEl = document.getElementById("score");
 const remainingEl = document.getElementById("remaining");
-const cardEl = document.getElementById("current-card");
+const cardBackEl = document.getElementById("current-card");
+const cardContainer = document.getElementById("card");
 const messageEl = document.getElementById("message");
 const logEl = document.getElementById("log");
 const flipBtn = document.getElementById("flipBtn");
@@ -71,7 +72,7 @@ function finishGame(reason) {
 
 function handleCard(card) {
   const display = displayCard(card);
-  cardEl.textContent = display;
+  cardBackEl.textContent = display;
   let points = scoreForCard(card);
 
   if (card.rank === "Joker") {
@@ -123,7 +124,10 @@ function handleCard(card) {
 function flipCard() {
   if (!running || deck.length === 0) return;
   const card = deck.pop();
-  handleCard(card);
+  if (cardContainer) cardContainer.classList.add("is-flipped");
+  setTimeout(() => {
+    handleCard(card);
+  }, 380);
 }
 
 function autoPlay() {
@@ -144,9 +148,10 @@ function startGame() {
   shuffle(deck);
   score = 300;
   running = true;
-  flipBtn.disabled = false;
+  flipBtn.style.display = 'none';
   autoBtn.disabled = false;
-  cardEl.textContent = "-";
+  if (cardContainer) cardContainer.classList.remove("is-flipped");
+  if (cardBackEl) cardBackEl.textContent = "-";
   messageEl.textContent = "게임이 시작되었습니다. 카드를 뒤집어 보세요.";
   logEl.innerHTML = "";
   updateUI();
@@ -156,6 +161,13 @@ function startGame() {
 flipBtn.addEventListener("click", () => {
   flipCard();
 });
+
+if (cardContainer) {
+  cardContainer.addEventListener('click', () => {
+    if (!running || deck.length === 0) return;
+    flipCard();
+  });
+}
 
 autoBtn.addEventListener("click", () => {
   autoMode = !autoMode;
