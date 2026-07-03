@@ -242,3 +242,69 @@ button:disabled {
   background: linear-gradient(135deg, #4b5563, #3d4452);
   opacity: 0.5;
 }
+
+/* Cards area & grid for showing many cards at once */
+.cards-area {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.card-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  justify-items: center;
+  align-items: center;
+}
+
+.mini-card {
+  width: 64px;
+  height: 88px;
+  border-radius: 8px;
+  background: linear-gradient(135deg,#0f1724,#0b1221);
+  color: #9fb3ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+  transform: scale(0);
+  transition: transform 260ms cubic-bezier(.2,.8,.2,1), opacity 220ms;
+  opacity: 0;
+}
+
+.mini-card.expanded {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.mini-card .mini-face {
+  font-size: 1rem;
+}
+
+/* When game starts, show only the cards-area and expand it for full view */
+body.only-cards .container > :not(.cards-area) {
+  display: none;
+}
+
+body.only-cards .container {
+  width: 100vw;
+  max-width: none;
+  border-radius: 0;
+  padding: 20px;
+}
+
+/* Make the card grid center and take available height to fit many cards */
+body.only-cards .cards-area {
+  margin: 0 auto;
+  background: transparent;
+  border: none;
+  padding: 10px;
+  display: block;
+}
+
+@media (min-width: 900px) {
+  .card-grid { grid-template-columns: repeat(6, 1fr); }
+}
