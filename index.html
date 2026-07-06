@@ -20,25 +20,24 @@
           <p id="remaining">30</p>
         </div>
       </div>
-      <div class="status-row">
-        <div>
-          <strong>최근 카드</strong>
-          <div class="card-scene">
-            <div class="card" id="card">
-              <div class="card-face card-front">🂠</div>
-              <div class="card-face card-back" id="current-card">-</div>
-            </div>
-          </div>
-        </div>
+      <div class="status-row single">
         <div>
           <strong>결과</strong>
-          <p id="message">게임을 시작하려면 카드를 뒤집어 보세요.</p>
+          <p id="message">카드를 클릭하면 카드가 뒤집혀요.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="play-area">
+      <div class="card-scene">
+        <div class="card" id="card" role="button" tabindex="0" aria-label="카드 뒤집기">
+          <div class="card-face card-front">🂠</div>
+          <div class="card-face card-back" id="current-card">-</div>
         </div>
       </div>
     </section>
 
     <section class="controls">
-      <button id="flipBtn">카드 뒤집기</button>
       <button id="autoBtn">자동 진행</button>
       <button id="restartBtn">다시 시작</button>
     </section>
@@ -72,10 +71,6 @@
       </div>
     </section>
 
-    <section class="log-card">
-      <h2>게임 기록</h2>
-      <div id="log"></div>
-    </section>
   </main>
   <script src="script.js"></script>
 </body>

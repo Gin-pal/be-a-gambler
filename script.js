@@ -4,7 +4,6 @@ const cardBackEl = document.getElementById("current-card");
 const cardContainer = document.getElementById("card");
 const messageEl = document.getElementById("message");
 const logEl = document.getElementById("log");
-const flipBtn = document.getElementById("flipBtn");
 const autoBtn = document.getElementById("autoBtn");
 const restartBtn = document.getElementById("restartBtn");
 const cardGrid = document.getElementById("cardGrid");
@@ -12,6 +11,25 @@ const peekBtn = document.getElementById("peekBtn");
 const replaceBtn = document.getElementById("replaceBtn");
 const peekUsedEl = document.getElementById("peekUsed");
 const replaceUsedEl = document.getElementById("replaceUsed");
+
+if (cardContainer) {
+  cardContainer.addEventListener("click", () => {
+    if (!running) {
+      startGame();
+    }
+    flipCard();
+  });
+
+  cardContainer.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      if (!running) {
+        startGame();
+      }
+      flipCard();
+    }
+  });
+}
 
 const TOTAL_CARDS = 30;
 const PEEK_COST = 500;
@@ -106,7 +124,6 @@ function logLine(text) {
 
 function finishGame(reason) {
   running = false;
-  if (flipBtn) flipBtn.disabled = true;
   if (autoBtn) autoBtn.disabled = true;
   updateShopUI();
   if (messageEl) messageEl.textContent = reason;
@@ -248,7 +265,6 @@ function flipCard() {
 function stopAutoPlay() {
   autoMode = false;
   if (autoBtn) autoBtn.textContent = "자동 진행";
-  if (flipBtn) flipBtn.disabled = false;
 }
 
 function autoPlay() {
@@ -256,7 +272,6 @@ function autoPlay() {
 
   autoMode = true;
   if (autoBtn) autoBtn.textContent = "자동 진행 중...";
-  if (flipBtn) flipBtn.disabled = true;
 
   const intervalId = setInterval(() => {
     if (!running || deck.length === 0 || score <= 0) {
@@ -280,17 +295,13 @@ function startGame() {
   peekUsed = 0;
   replaceUsed = 0;
 
-  if (flipBtn) {
-    flipBtn.disabled = false;
-    flipBtn.style.display = "inline-block";
-  }
   if (autoBtn) {
     autoBtn.disabled = false;
     autoBtn.textContent = "자동 진행";
   }
   if (cardContainer) cardContainer.classList.remove("is-flipped");
   if (cardBackEl) cardBackEl.textContent = "-";
-  if (messageEl) messageEl.textContent = "게임이 시작되었습니다. 카드를 뒤집어 보세요.";
+  if (messageEl) messageEl.textContent = "게임이 시작되었습니다. 카드를 클릭해 보세요.";
   if (logEl) logEl.innerHTML = "";
 
   renderCardGrid();
