@@ -72,9 +72,10 @@ function renderCardGrid() {
 
   cardGrid.innerHTML = "";
   fullDeck.forEach((card) => {
+    const isRevealed = revealedCards.includes(card);
     const cardEl = document.createElement("div");
-    cardEl.className = `mini-card${revealedCards.includes(card) ? " revealed" : ""}`;
-    cardEl.innerHTML = `<div class="mini-face">${displayCard(card)}</div>`;
+    cardEl.className = `mini-card${isRevealed ? " revealed" : ""}`;
+    cardEl.innerHTML = `<div class="mini-face">${isRevealed ? displayCard(card) : "🂠"}</div>`;
     cardGrid.appendChild(cardEl);
   });
 }
