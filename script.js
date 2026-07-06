@@ -7,28 +7,45 @@ const logEl = document.getElementById("log");
 const flipBtn = document.getElementById("flipBtn");
 const autoBtn = document.getElementById("autoBtn");
 const restartBtn = document.getElementById("restartBtn");
+const cardGrid = document.getElementById("cardGrid");
+const peekBtn = document.getElementById("peekBtn");
+const replaceBtn = document.getElementById("replaceBtn");
+const peekUsedEl = document.getElementById("peekUsed");
+const replaceUsedEl = document.getElementById("replaceUsed");
 
+const TOTAL_CARDS = 30;
+const PEEK_COST = 500;
+const REPLACE_COST = 300;
+const PEEK_LIMIT = 3;
+const REPLACE_LIMIT = 5;
 let deck = [];
+let fullDeck = [];
 let score = 300;
 let autoMode = false;
 let running = false;
+let revealedCards = [];
+let currentCard = null;
+let peekUsed = 0;
+let replaceUsed = 0;
 
 function buildDeck() {
   const deck = [];
   const normalRanks = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J"];
+
   for (const rank of normalRanks) {
     for (const suit of ["♠", "♥", "♦", "♣"]) {
       deck.push({ rank, suit });
-      if (deck.length >= 10) break;
+      if (deck.length >= 15) break;
     }
-    if (deck.length >= 10) break;
+    if (deck.length >= 15) break;
   }
 
-  for (let i = 0; i < 4; i += 1) deck.push({ rank: "A" });
-  for (let i = 0; i < 3; i += 1) deck.push({ rank: "K" });
-  for (let i = 0; i < 2; i += 1) deck.push({ rank: "Q" });
-  deck.push({ rank: "Joker" });
-  return deck.slice(0, 20);
+  for (let i = 0; i < 6; i += 1) deck.push({ rank: "A" });
+  for (let i = 0; i < 4; i += 1) deck.push({ rank: "K" });
+  for (let i = 0; i < 3; i += 1) deck.push({ rank: "Q" });
+  for (let i = 0; i < 2; i += 1) deck.push({ rank: "Joker" });
+
+  return deck.slice(0, TOTAL_CARDS);
 }
 
 function shuffle(array) {
@@ -50,89 +67,99 @@ function displayCard(card) {
   return `${card.rank}${card.suit ?? ""}`;
 }
 
+function renderCardGrid() {
+  if (!cardGrid) return;
+
+  cardGrid.innerHTML = "";
+  fullDeck.forEach((card) => {
+    const cardEl = document.createElement("div");
+    cardEl.className = `mini-card${revealedCards.includes(card) ? " revealed" : ""}`;
+    cardEl.innerHTML = `<div class="mini-face">${displayCard(card)}</div>`;
+    cardGrid.appendChild(cardEl);
+  });
+}
+
 function updateUI() {
-  scoreEl.textContent = score;
-  remainingEl.textContent = deck.length;
+  if (scoreEl) scoreEl.textContent = score;
+  if (remainingEl) remainingEl.textContent = deck.length;
+}
+
+function updateShopUI() {
+  if (peekUsedEl) peekUsedEl.textContent = peekUsed;
+  if (replaceUsedEl) replaceUsedEl.textContent = replaceUsed;
+
+  if (peekBtn) {
+    peekBtn.disabled = !running || peekUsed >= PEEK_LIMIT || score < PEEK_COST;
+  }
+  if (replaceBtn) {
+    replaceBtn.disabled = !running || replaceUsed >= REPLACE_LIMIT || score < REPLACE_COST;
+  }
 }
 
 function logLine(text) {
   const line = document.createElement("div");
   line.className = "log-item";
   line.textContent = text;
-  logEl.prepend(line);
+  if (logEl) logEl.prepend(line);
 }
 
 function finishGame(reason) {
   running = false;
-  flipBtn.disabled = true;
-  autoBtn.disabled = false;
-  messageEl.textContent = reason;
+  if (flipBtn) flipBtn.disabled = true;
+  if (autoBtn) autoBtn.disabled = true;
+  updateShopUI();
+  if (messageEl) messageEl.textContent = reason;
   logLine(`게임 종료: ${reason}`);
 }
 
 function handleCard(card) {
+  currentCard = card;
   const display = displayCard(card);
-  cardBackEl.textContent = display;
-  let points = scoreForCard(card);
+  if (cardBackEl) cardBackEl.textContent = display;
+
+  const points = scoreForCard(card);
 
   if (card.rank === "Joker") {
     score += points;
-    messageEl.textContent = `조커를 뒤집었습니다! ${points}점 적용.`;
+    if (messageEl) messageEl.textContent = `조커를 뒤집었습니다! ${points}점 적용.`;
     logLine(`[카드] ${display} → ${points}점, 남은 카드 ${deck.length}, 점수 ${score}`);
   } else if (card.rank === "A") {
     score += points;
-    messageEl.textContent = `에이스! +500점! 현재 점수: ${score}`;
+    if (messageEl) messageEl.textContent = `에이스! +500점! 현재 점수: ${score}`;
     logLine(`[카드] ${display} → +500점, 점수 ${score}`);
   } else if (card.rank === "K" || card.rank === "Q") {
-    messageEl.textContent = `${card.rank}를 뽑았습니다! 카드 하나를 더 뽑습니다.`;
+    if (messageEl) messageEl.textContent = `${card.rank}를 뽑았습니다! 카드 하나를 더 뽑습니다.`;
     logLine(`[카드] ${display} → 추가 카드 뽑기, 남은 카드 ${deck.length}, 점수 ${score}`);
+
     if (deck.length > 0) {
       const bonusCard = deck.pop();
+      revealedCards.push(bonusCard);
+      renderCardGrid();
       const bonusPoints = scoreForCard(bonusCard);
       const bonusDisplay = displayCard(bonusCard);
+
       if (bonusPoints === 0) {
-        messageEl.textContent = `보너스 카드 ${bonusDisplay} (추가 카드 뽑기)`;
+        if (messageEl) messageEl.textContent = `보너스 카드 ${bonusDisplay} (추가 카드 뽑기)`;
         logLine(`[보너스] ${bonusDisplay} → 추가 카드 뽑기, 점수 ${score}`);
         handleCard(bonusCard);
         return;
       }
+
       score += bonusPoints;
-      messageEl.textContent = `보너스 카드 ${bonusDisplay} ${bonusPoints >= 0 ? "+" : ""}${bonusPoints}점! 현재 점수: ${score}`;
-        // card-grid settings
-        const CARD_GRID_COUNT = 30;
+      if (messageEl) messageEl.textContent = `보너스 카드 ${bonusDisplay} ${bonusPoints >= 0 ? "+" : ""}${bonusPoints}점! 현재 점수: ${score}`;
       logLine(`[보너스] ${bonusDisplay} → ${bonusPoints >= 0 ? "+" : ""}${bonusPoints}점, 점수 ${score}`);
     } else {
-      messageEl.textContent = "더 이상 남은 카드가 없습니다.";
+      if (messageEl) messageEl.textContent = "더 이상 남은 카드가 없습니다.";
       logLine("보너스 카드 없음, 덱 비어있음");
     }
-
-        function generateCardGrid(count = CARD_GRID_COUNT) {
-          const grid = document.getElementById('cardGrid');
-          if (!grid) return;
-          grid.innerHTML = '';
-          for (let i = 0; i < count; i += 1) {
-            const el = document.createElement('div');
-            el.className = 'mini-card';
-            el.dataset.idx = i;
-            el.innerHTML = '<div class="mini-face">🂠</div>';
-            grid.appendChild(el);
-          }
-        }
-
-        function expandCardsSequentially() {
-          const cards = document.querySelectorAll('.mini-card');
-          cards.forEach((card, i) => {
-            setTimeout(() => {
-              card.classList.add('expanded');
-            }, i * 60);
-          });
   } else {
     score += points;
-    messageEl.textContent = `일반 카드 ${display}! +100점! 현재 점수: ${score}`;
+    if (messageEl) messageEl.textContent = `일반 카드 ${display}! +100점! 현재 점수: ${score}`;
     logLine(`[카드] ${display} → +100점, 점수 ${score}`);
   }
 
   updateUI();
+  updateShopUI();
 
   if (score <= 0) {
     finishGame("점수가 0 이하가 되어 게임이 끝났습니다.");
@@ -141,90 +168,174 @@ function handleCard(card) {
 
   if (deck.length === 0) {
     finishGame("모든 카드를 뒤집었습니다.");
-          // prepare and show card grid, and hide other UI
-          generateCardGrid(CARD_GRID_COUNT);
-          document.body.classList.add('only-cards');
-          // animate
-          requestAnimationFrame(() => expandCardsSequentially());
   }
+}
+
+function applyPeekEffect() {
+  if (!running) return;
+  if (!currentCard) {
+    if (messageEl) messageEl.textContent = "현재 카드가 없습니다.";
+    return;
+  }
+  if (peekUsed >= PEEK_LIMIT) {
+    if (messageEl) messageEl.textContent = "카드 확인은 더 이상 사용할 수 없습니다.";
+    return;
+  }
+  if (score < PEEK_COST) {
+    if (messageEl) messageEl.textContent = `카드 확인은 ${PEEK_COST}점이 필요합니다.`;
+    return;
+  }
+
+  score -= PEEK_COST;
+  peekUsed += 1;
+  const nextCard = deck[deck.length - 1];
+  const nextDisplay = nextCard ? displayCard(nextCard) : "없음";
+
+  if (messageEl) messageEl.textContent = `카드 확인! 현재 카드: ${displayCard(currentCard)} / 다음 카드: ${nextDisplay}`;
+  logLine(`[아이템] 카드 확인 사용 → 다음 카드 ${nextDisplay}`);
+  updateUI();
+  updateShopUI();
+}
+
+function applyReplaceEffect() {
+  if (!running) return;
+  if (!currentCard) {
+    if (messageEl) messageEl.textContent = "현재 카드가 없습니다.";
+    return;
+  }
+  if (replaceUsed >= REPLACE_LIMIT) {
+    if (messageEl) messageEl.textContent = "카드 교체는 더 이상 사용할 수 없습니다.";
+    return;
+  }
+  if (score < REPLACE_COST) {
+    if (messageEl) messageEl.textContent = `카드 교체는 ${REPLACE_COST}점이 필요합니다.`;
+    return;
+  }
+  if (deck.length === 0) {
+    if (messageEl) messageEl.textContent = "교체할 카드가 더 없습니다.";
+    return;
+  }
+
+  score -= REPLACE_COST;
+  replaceUsed += 1;
+  const replacement = deck.pop();
+  currentCard = replacement;
+  revealedCards.push(replacement);
+  renderCardGrid();
+
+  if (cardBackEl) cardBackEl.textContent = displayCard(currentCard);
+  if (messageEl) messageEl.textContent = `카드 교체! 현재 카드가 ${displayCard(currentCard)}로 바뀌었습니다.`;
+  logLine(`[아이템] 카드 교체 사용 → ${displayCard(currentCard)}`);
+  updateUI();
+  updateShopUI();
 }
 
 function flipCard() {
   if (!running || deck.length === 0) return;
+
   const card = deck.pop();
+  currentCard = card;
+  revealedCards.push(card);
+  renderCardGrid();
+
   if (cardContainer) cardContainer.classList.add("is-flipped");
   setTimeout(() => {
-          // when finished, show full UI again
-          document.body.classList.remove('only-cards');
     handleCard(card);
   }, 380);
 }
 
+function stopAutoPlay() {
+  autoMode = false;
+  if (autoBtn) autoBtn.textContent = "자동 진행";
+  if (flipBtn) flipBtn.disabled = false;
+}
+
 function autoPlay() {
   if (!running) return;
-  let timeout = 0;
-  while (running && deck.length > 0 && score > 0) {
-    setTimeout(() => {
-      if (!running) return;
-      flipCard();
-    }, timeout);
-    timeout += 500;
-    if (timeout > 10000) break;
-  }
+
+  autoMode = true;
+  if (autoBtn) autoBtn.textContent = "자동 진행 중...";
+  if (flipBtn) flipBtn.disabled = true;
+
+  const intervalId = setInterval(() => {
+    if (!running || deck.length === 0 || score <= 0) {
+      clearInterval(intervalId);
+      stopAutoPlay();
+      return;
+    }
+    flipCard();
+  }, 600);
 }
 
 function startGame() {
-  deck = buildDeck();
+  fullDeck = buildDeck();
+  deck = [...fullDeck];
   shuffle(deck);
   score = 300;
   running = true;
-  flipBtn.style.display = 'none';
-  autoBtn.disabled = false;
+  autoMode = false;
+  revealedCards = [];
+  currentCard = null;
+  peekUsed = 0;
+  replaceUsed = 0;
+
+  if (flipBtn) {
+    flipBtn.disabled = false;
+    flipBtn.style.display = "inline-block";
+  }
+  if (autoBtn) {
+    autoBtn.disabled = false;
+    autoBtn.textContent = "자동 진행";
+  }
   if (cardContainer) cardContainer.classList.remove("is-flipped");
   if (cardBackEl) cardBackEl.textContent = "-";
-  messageEl.textContent = "게임이 시작되었습니다. 카드를 뒤집어 보세요.";
-  logEl.innerHTML = "";
+  if (messageEl) messageEl.textContent = "게임이 시작되었습니다. 카드를 뒤집어 보세요.";
+  if (logEl) logEl.innerHTML = "";
+
+  renderCardGrid();
   updateUI();
+  updateShopUI();
   logLine("새 게임 시작");
 }
 
-flipBtn.addEventListener("click", () => {
-  flipCard();
-});
+if (flipBtn) {
+  flipBtn.addEventListener("click", () => {
+    flipCard();
+  });
+}
+
+if (autoBtn) {
+  autoBtn.addEventListener("click", () => {
+    if (!running) {
+      startGame();
+    }
+    if (autoMode) {
+      stopAutoPlay();
+    } else {
+      autoPlay();
+    }
+  });
+}
+
+if (restartBtn) {
+  restartBtn.addEventListener("click", () => {
+    startGame();
+  });
+}
 
 if (cardContainer) {
-  cardContainer.addEventListener('click', () => {
+  cardContainer.addEventListener("click", () => {
     if (!running || deck.length === 0) return;
     flipCard();
   });
 }
 
-autoBtn.addEventListener("click", () => {
-  autoMode = !autoMode;
-  if (autoMode) {
-    autoBtn.textContent = "자동 진행 중...";
-    flipBtn.disabled = true;
-    logLine("자동 진행 시작");
-    let interval = setInterval(() => {
-      if (!running || deck.length === 0 || score <= 0) {
-        clearInterval(interval);
-        autoMode = false;
-        autoBtn.textContent = "자동 진행";
-        flipBtn.disabled = !running;
-        return;
-      }
-      flipCard();
-    }, 600);
-  } else {
-    autoBtn.textContent = "자동 진행";
-    flipBtn.disabled = false;
-  }
-});
+if (peekBtn) {
+  peekBtn.addEventListener("click", applyPeekEffect);
+}
 
-restartBtn.addEventListener("click", () => {
-  autoMode = false;
-  autoBtn.textContent = "자동 진행";
-  startGame();
-});
+if (replaceBtn) {
+  replaceBtn.addEventListener("click", applyReplaceEffect);
+}
 
 startGame();

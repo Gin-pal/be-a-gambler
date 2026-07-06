@@ -3,10 +3,10 @@
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background: #0b1221;
-  color: #f5f8ff;
+  background: linear-gradient(135deg, #fef3c7 0%, #fefcf7 50%, #f3f4f6 100%);
+  color: #111827;
 }
 
 body {
@@ -16,15 +16,16 @@ body {
   align-items: center;
   justify-content: center;
   padding: 24px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fefcf7 50%, #f3f4f6 100%);
 }
 
 .container {
   width: min(900px, 100%);
-  background: linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(10, 15, 29, 0.96));
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 24px;
   padding: 28px;
-  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
 }
 
 h1 {
@@ -35,8 +36,8 @@ h1 {
 
 .status-card,
 .log-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 18px;
   padding: 20px;
   margin-bottom: 20px;
@@ -49,7 +50,7 @@ h1 {
 }
 
 .status-row div {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(248, 250, 252, 0.95);
   border-radius: 14px;
   padding: 16px;
 }
@@ -57,7 +58,7 @@ h1 {
 .status-row strong {
   display: block;
   margin-bottom: 10px;
-  color: #d4d8ff;
+  color: #374151;
 }
 
 .status-row p {
@@ -109,12 +110,13 @@ button:disabled {
 }
 
 .log-item {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(249, 250, 251, 0.95);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 14px;
   padding: 14px;
   font-size: 0.98rem;
   line-height: 1.5;
+  color: #111827;
 }
 
 @media (max-width: 640px) {
@@ -167,8 +169,8 @@ button:disabled {
 
 /* Shop styles */
 .shop-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 18px;
   padding: 20px;
   margin-bottom: 20px;
@@ -187,8 +189,8 @@ button:disabled {
 }
 
 .shop-item {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(248, 250, 252, 0.95);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 14px;
   padding: 16px;
   display: flex;
@@ -203,7 +205,7 @@ button:disabled {
 .item-info h3 {
   margin: 0 0 8px 0;
   font-size: 1.1rem;
-  color: #d4d8ff;
+  color: #111827;
 }
 
 .item-info p {
@@ -213,7 +215,7 @@ button:disabled {
 }
 
 .item-desc {
-  color: #a0a8c8;
+  color: #6b7280;
 }
 
 .item-price {
@@ -245,8 +247,8 @@ button:disabled {
 
 /* Cards area & grid for showing many cards at once */
 .cards-area {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 14px;
   padding: 16px;
   margin-bottom: 20px;
@@ -255,14 +257,15 @@ button:disabled {
 .card-grid {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   justify-items: center;
   align-items: center;
 }
 
 .mini-card {
-  width: 64px;
-  height: 88px;
+  width: 100%;
+  max-width: 86px;
+  aspect-ratio: 3 / 4;
   border-radius: 8px;
   background: linear-gradient(135deg,#0f1724,#0b1221);
   color: #9fb3ff;
@@ -270,19 +273,21 @@ button:disabled {
   align-items: center;
   justify-content: center;
   box-shadow: 0 6px 18px rgba(0,0,0,0.45);
-  transform: scale(0);
-  transition: transform 260ms cubic-bezier(.2,.8,.2,1), opacity 220ms;
-  opacity: 0;
+  border: 1px solid rgba(255,255,255,0.12);
+  font-weight: 600;
 }
 
-.mini-card.expanded {
-  transform: scale(1);
-  opacity: 1;
+.mini-card.revealed {
+  background: linear-gradient(135deg,#1d4ed8,#2563eb);
+  color: #eff6ff;
 }
 
 .mini-card .mini-face {
-  font-size: 1rem;
+  font-size: 0.95rem;
+  text-align: center;
+  padding: 4px;
 }
+
 
 /* When game starts, show only the cards-area and expand it for full view */
 body.only-cards .container > :not(.cards-area) {
@@ -305,6 +310,11 @@ body.only-cards .cards-area {
   display: block;
 }
 
-@media (min-width: 900px) {
-  .card-grid { grid-template-columns: repeat(6, 1fr); }
+@media (max-width: 900px) {
+  .card-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .mini-card { max-width: 72px; }
 }

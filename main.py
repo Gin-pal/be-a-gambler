@@ -3,7 +3,8 @@ import random
 from typing import List
 
 
-class Card:
+class Card:현재 카드에 즉시 아이템 능력 실행 해줘
+
     def __init__(self, rank: str, suit: str | None = None):
         self.rank = rank
         self.suit = suit
