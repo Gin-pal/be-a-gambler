@@ -1,35 +1,11 @@
 const scoreEl = document.getElementById("score");
 const remainingEl = document.getElementById("remaining");
-const cardBackEl = document.getElementById("current-card");
-const cardContainer = document.getElementById("card");
 const messageEl = document.getElementById("message");
-const logEl = document.getElementById("log");
-const autoBtn = document.getElementById("autoBtn");
-const restartBtn = document.getElementById("restartBtn");
 const cardGrid = document.getElementById("cardGrid");
 const peekBtn = document.getElementById("peekBtn");
 const replaceBtn = document.getElementById("replaceBtn");
 const peekUsedEl = document.getElementById("peekUsed");
 const replaceUsedEl = document.getElementById("replaceUsed");
-
-if (cardContainer) {
-  cardContainer.addEventListener("click", () => {
-    if (!running) {
-      startGame();
-    }
-    flipCard();
-  });
-
-  cardContainer.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      if (!running) {
-        startGame();
-      }
-      flipCard();
-    }
-  });
-}
 
 const TOTAL_CARDS = 30;
 const PEEK_COST = 500;
@@ -39,7 +15,6 @@ const REPLACE_LIMIT = 5;
 let deck = [];
 let fullDeck = [];
 let score = 300;
-let autoMode = false;
 let running = false;
 let revealedCards = [];
 let currentCard = null;
@@ -89,13 +64,32 @@ function renderCardGrid() {
   if (!cardGrid) return;
 
   cardGrid.innerHTML = "";
-  fullDeck.forEach((card) => {
-    const isRevealed = revealedCards.includes(card);
+  for (let index = 0; index < TOTAL_CARDS; index += 1) {
+    const revealedCard = revealedCards[index];
+    const isRevealed = Boolean(revealedCard);
     const cardEl = document.createElement("div");
     cardEl.className = `mini-card${isRevealed ? " revealed" : ""}`;
-    cardEl.innerHTML = `<div class="mini-face">${isRevealed ? displayCard(card) : "🂠"}</div>`;
+    cardEl.dataset.index = index;
+    cardEl.innerHTML = `<div class="mini-face">${isRevealed ? displayCard(revealedCard) : "🂠"}</div>`;
+
+    cardEl.addEventListener("click", () => {
+      if (!running || isRevealed || deck.length === 0) return;
+      flipCard(index);
+    });
+
     cardGrid.appendChild(cardEl);
-  });
+  }
+}
+
+function revealCardAtSlot(slotIndex = -1) {
+  const targetIndex = slotIndex >= 0 ? slotIndex : revealedCards.findIndex((card) => card === null);
+  if (targetIndex < 0 || revealedCards[targetIndex]) return null;
+  if (deck.length === 0) return null;
+
+  const card = deck.pop();
+  revealedCards[targetIndex] = card;
+  renderCardGrid();
+  return card;
 }
 
 function updateUI() {
@@ -115,65 +109,49 @@ function updateShopUI() {
   }
 }
 
-function logLine(text) {
-  const line = document.createElement("div");
-  line.className = "log-item";
-  line.textContent = text;
-  if (logEl) logEl.prepend(line);
-}
-
 function finishGame(reason) {
   running = false;
-  if (autoBtn) autoBtn.disabled = true;
   updateShopUI();
   if (messageEl) messageEl.textContent = reason;
-  logLine(`게임 종료: ${reason}`);
 }
 
 function handleCard(card) {
   currentCard = card;
   const display = displayCard(card);
-  if (cardBackEl) cardBackEl.textContent = display;
-
   const points = scoreForCard(card);
 
   if (card.rank === "Joker") {
     score += points;
     if (messageEl) messageEl.textContent = `조커를 뒤집었습니다! ${points}점 적용.`;
-    logLine(`[카드] ${display} → ${points}점, 남은 카드 ${deck.length}, 점수 ${score}`);
   } else if (card.rank === "A") {
     score += points;
     if (messageEl) messageEl.textContent = `에이스! +500점! 현재 점수: ${score}`;
-    logLine(`[카드] ${display} → +500점, 점수 ${score}`);
   } else if (card.rank === "K" || card.rank === "Q") {
     if (messageEl) messageEl.textContent = `${card.rank}를 뽑았습니다! 카드 하나를 더 뽑습니다.`;
-    logLine(`[카드] ${display} → 추가 카드 뽑기, 남은 카드 ${deck.length}, 점수 ${score}`);
 
     if (deck.length > 0) {
-      const bonusCard = deck.pop();
-      revealedCards.push(bonusCard);
-      renderCardGrid();
+      const bonusCard = revealCardAtSlot();
+      if (!bonusCard) {
+        if (messageEl) messageEl.textContent = "더 이상 남은 카드가 없습니다.";
+        return;
+      }
       const bonusPoints = scoreForCard(bonusCard);
       const bonusDisplay = displayCard(bonusCard);
 
       if (bonusPoints === 0) {
         if (messageEl) messageEl.textContent = `보너스 카드 ${bonusDisplay} (추가 카드 뽑기)`;
-        logLine(`[보너스] ${bonusDisplay} → 추가 카드 뽑기, 점수 ${score}`);
         handleCard(bonusCard);
         return;
       }
 
       score += bonusPoints;
       if (messageEl) messageEl.textContent = `보너스 카드 ${bonusDisplay} ${bonusPoints >= 0 ? "+" : ""}${bonusPoints}점! 현재 점수: ${score}`;
-      logLine(`[보너스] ${bonusDisplay} → ${bonusPoints >= 0 ? "+" : ""}${bonusPoints}점, 점수 ${score}`);
     } else {
       if (messageEl) messageEl.textContent = "더 이상 남은 카드가 없습니다.";
-      logLine("보너스 카드 없음, 덱 비어있음");
     }
   } else {
     score += points;
     if (messageEl) messageEl.textContent = `일반 카드 ${display}! +100점! 현재 점수: ${score}`;
-    logLine(`[카드] ${display} → +100점, 점수 ${score}`);
   }
 
   updateUI();
@@ -210,7 +188,6 @@ function applyPeekEffect() {
   const nextDisplay = nextCard ? displayCard(nextCard) : "없음";
 
   if (messageEl) messageEl.textContent = `카드 확인! 현재 카드: ${displayCard(currentCard)} / 다음 카드: ${nextDisplay}`;
-  logLine(`[아이템] 카드 확인 사용 → 다음 카드 ${nextDisplay}`);
   updateUI();
   updateShopUI();
 }
@@ -236,51 +213,26 @@ function applyReplaceEffect() {
 
   score -= REPLACE_COST;
   replaceUsed += 1;
-  const replacement = deck.pop();
+  const replacement = revealCardAtSlot();
+  if (!replacement) {
+    if (messageEl) messageEl.textContent = "교체할 카드가 더 없습니다.";
+    return;
+  }
   currentCard = replacement;
-  revealedCards.push(replacement);
-  renderCardGrid();
 
-  if (cardBackEl) cardBackEl.textContent = displayCard(currentCard);
   if (messageEl) messageEl.textContent = `카드 교체! 현재 카드가 ${displayCard(currentCard)}로 바뀌었습니다.`;
-  logLine(`[아이템] 카드 교체 사용 → ${displayCard(currentCard)}`);
   updateUI();
   updateShopUI();
 }
 
-function flipCard() {
+function flipCard(slotIndex = -1) {
   if (!running || deck.length === 0) return;
 
-  const card = deck.pop();
+  const card = revealCardAtSlot(slotIndex);
+  if (!card) return;
+
   currentCard = card;
-  revealedCards.push(card);
-  renderCardGrid();
-
-  if (cardContainer) cardContainer.classList.add("is-flipped");
-  setTimeout(() => {
-    handleCard(card);
-  }, 380);
-}
-
-function stopAutoPlay() {
-  autoMode = false;
-  if (autoBtn) autoBtn.textContent = "자동 진행";
-}
-
-function autoPlay() {
-  if (!running) return;
-
-  autoMode = true;
-  if (autoBtn) autoBtn.textContent = "자동 진행 중...";
-
-  const intervalId = setInterval(() => {
-    if (!running || deck.length === 0 || score <= 0) {
-      clearInterval(intervalId);
-      stopAutoPlay();
-      return;
-    }
-    flipCard();
-  }, 600);
+  handleCard(card);
 }
 
 function startGame() {
@@ -289,57 +241,16 @@ function startGame() {
   shuffle(deck);
   score = 300;
   running = true;
-  autoMode = false;
-  revealedCards = [];
+  revealedCards = Array(TOTAL_CARDS).fill(null);
   currentCard = null;
   peekUsed = 0;
   replaceUsed = 0;
 
-  if (autoBtn) {
-    autoBtn.disabled = false;
-    autoBtn.textContent = "자동 진행";
-  }
-  if (cardContainer) cardContainer.classList.remove("is-flipped");
-  if (cardBackEl) cardBackEl.textContent = "-";
   if (messageEl) messageEl.textContent = "게임이 시작되었습니다. 카드를 클릭해 보세요.";
-  if (logEl) logEl.innerHTML = "";
 
   renderCardGrid();
   updateUI();
   updateShopUI();
-  logLine("새 게임 시작");
-}
-
-if (flipBtn) {
-  flipBtn.addEventListener("click", () => {
-    flipCard();
-  });
-}
-
-if (autoBtn) {
-  autoBtn.addEventListener("click", () => {
-    if (!running) {
-      startGame();
-    }
-    if (autoMode) {
-      stopAutoPlay();
-    } else {
-      autoPlay();
-    }
-  });
-}
-
-if (restartBtn) {
-  restartBtn.addEventListener("click", () => {
-    startGame();
-  });
-}
-
-if (cardContainer) {
-  cardContainer.addEventListener("click", () => {
-    if (!running || deck.length === 0) return;
-    flipCard();
-  });
 }
 
 if (peekBtn) {
