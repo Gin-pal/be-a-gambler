@@ -20,6 +20,8 @@ let revealedCards = [];
 let currentCard = null;
 let peekUsed = 0;
 let replaceUsed = 0;
+let pendingItem = null;
+let peekedCards = [];
 
 function buildDeck() {
   const deck = [];
@@ -66,14 +68,33 @@ function renderCardGrid() {
   cardGrid.innerHTML = "";
   for (let index = 0; index < TOTAL_CARDS; index += 1) {
     const revealedCard = revealedCards[index];
+    const peekedCard = peekedCards[index];
     const isRevealed = Boolean(revealedCard);
+    const isPeeked = Boolean(peekedCard);
     const cardEl = document.createElement("div");
-    cardEl.className = `mini-card${isRevealed ? " revealed" : ""}`;
+    cardEl.className = `mini-card${isRevealed ? " revealed" : ""}${isPeeked ? " peeked" : ""}`;
     cardEl.dataset.index = index;
-    cardEl.innerHTML = `<div class="mini-face">${isRevealed ? displayCard(revealedCard) : "🂠"}</div>`;
+    const faceText = isRevealed ? displayCard(revealedCard) : isPeeked ? displayCard(peekedCard) : "🂠";
+    cardEl.innerHTML = `<div class="mini-face">${faceText}</div>`;
 
     cardEl.addEventListener("click", () => {
-      if (!running || isRevealed || deck.length === 0) return;
+      if (!running || isRevealed) return;
+
+      if (pendingItem) {
+        if (pendingItem === "peek") {
+          handlePeekItem(index, cardEl);
+        } else if (pendingItem === "replace") {
+          handleReplaceItem(index, cardEl);
+        }
+        return;
+      }
+
+      if (isPeeked) {
+        revealPeekedCard(index);
+        return;
+      }
+
+      if (deck.length === 0) return;
       flipCard(index);
     });
 
@@ -101,11 +122,12 @@ function updateShopUI() {
   if (peekUsedEl) peekUsedEl.textContent = peekUsed;
   if (replaceUsedEl) replaceUsedEl.textContent = replaceUsed;
 
+  const itemPending = Boolean(pendingItem);
   if (peekBtn) {
-    peekBtn.disabled = !running || peekUsed >= PEEK_LIMIT || score < PEEK_COST;
+    peekBtn.disabled = !running || itemPending || peekUsed >= PEEK_LIMIT || score < PEEK_COST;
   }
   if (replaceBtn) {
-    replaceBtn.disabled = !running || replaceUsed >= REPLACE_LIMIT || score < REPLACE_COST;
+    replaceBtn.disabled = !running || itemPending || replaceUsed >= REPLACE_LIMIT || score < REPLACE_COST;
   }
 }
 
@@ -167,12 +189,62 @@ function handleCard(card) {
   }
 }
 
-function applyPeekEffect() {
+function handlePeekItem(slotIndex, cardEl) {
   if (!running) return;
-  if (!currentCard) {
-    if (messageEl) messageEl.textContent = "현재 카드가 없습니다.";
+  if (deck.length === 0) {
+    pendingItem = null;
+    if (messageEl) messageEl.textContent = "더 이상 확인할 카드가 없습니다.";
+    updateShopUI();
     return;
   }
+
+  const peekCard = deck.pop();
+  peekedCards[slotIndex] = peekCard;
+  pendingItem = null;
+  cardEl.classList.add("peeked");
+  if (messageEl) messageEl.textContent = `카드 확인! 클릭한 카드의 값은 ${displayCard(peekCard)}입니다.`;
+  renderCardGrid();
+  updateUI();
+  updateShopUI();
+}
+
+function revealPeekedCard(slotIndex) {
+  const peekCard = peekedCards[slotIndex];
+  if (!peekCard) return;
+
+  revealedCards[slotIndex] = peekCard;
+  peekedCards[slotIndex] = null;
+  renderCardGrid();
+  currentCard = peekCard;
+  handleCard(peekCard);
+}
+
+function handleReplaceItem(slotIndex, cardEl) {
+  if (!running) return;
+  if (deck.length === 0) {
+    pendingItem = null;
+    if (messageEl) messageEl.textContent = "교체할 카드가 더 없습니다.";
+    updateShopUI();
+    return;
+  }
+
+  pendingItem = null;
+  cardEl.classList.add("replacing");
+
+  window.setTimeout(() => {
+    const randomIndex = Math.floor(Math.random() * deck.length);
+    const replacement = deck.splice(randomIndex, 1)[0];
+    revealedCards[slotIndex] = replacement;
+    currentCard = replacement;
+    if (messageEl) messageEl.textContent = `카드 교체! 클릭한 카드가 ${displayCard(replacement)}로 바뀌었습니다.`;
+    renderCardGrid();
+    updateUI();
+    updateShopUI();
+  }, 550);
+}
+
+function applyPeekEffect() {
+  if (!running) return;
   if (peekUsed >= PEEK_LIMIT) {
     if (messageEl) messageEl.textContent = "카드 확인은 더 이상 사용할 수 없습니다.";
     return;
@@ -184,20 +256,14 @@ function applyPeekEffect() {
 
   score -= PEEK_COST;
   peekUsed += 1;
-  const nextCard = deck[deck.length - 1];
-  const nextDisplay = nextCard ? displayCard(nextCard) : "없음";
-
-  if (messageEl) messageEl.textContent = `카드 확인! 현재 카드: ${displayCard(currentCard)} / 다음 카드: ${nextDisplay}`;
+  pendingItem = "peek";
+  if (messageEl) messageEl.textContent = "다음으로 클릭한 카드의 정보를 확인합니다.";
   updateUI();
   updateShopUI();
 }
 
 function applyReplaceEffect() {
   if (!running) return;
-  if (!currentCard) {
-    if (messageEl) messageEl.textContent = "현재 카드가 없습니다.";
-    return;
-  }
   if (replaceUsed >= REPLACE_LIMIT) {
     if (messageEl) messageEl.textContent = "카드 교체는 더 이상 사용할 수 없습니다.";
     return;
@@ -213,14 +279,8 @@ function applyReplaceEffect() {
 
   score -= REPLACE_COST;
   replaceUsed += 1;
-  const replacement = revealCardAtSlot();
-  if (!replacement) {
-    if (messageEl) messageEl.textContent = "교체할 카드가 더 없습니다.";
-    return;
-  }
-  currentCard = replacement;
-
-  if (messageEl) messageEl.textContent = `카드 교체! 현재 카드가 ${displayCard(currentCard)}로 바뀌었습니다.`;
+  pendingItem = "replace";
+  if (messageEl) messageEl.textContent = "다음으로 클릭한 카드가 랜덤으로 교체됩니다.";
   updateUI();
   updateShopUI();
 }
@@ -245,6 +305,8 @@ function startGame() {
   currentCard = null;
   peekUsed = 0;
   replaceUsed = 0;
+  pendingItem = null;
+  peekedCards = Array(TOTAL_CARDS).fill(null);
 
   if (messageEl) messageEl.textContent = "게임이 시작되었습니다. 카드를 클릭해 보세요.";
 
