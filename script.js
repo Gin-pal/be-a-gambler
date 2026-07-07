@@ -1,5 +1,6 @@
 const scoreEl = document.getElementById("score");
 const remainingEl = document.getElementById("remaining");
+const livesEl = document.getElementById("lives");
 const messageEl = document.getElementById("message");
 const cardGrid = document.getElementById("cardGrid");
 const peekBtn = document.getElementById("peekBtn");
@@ -8,6 +9,7 @@ const peekUsedEl = document.getElementById("peekUsed");
 const replaceUsedEl = document.getElementById("replaceUsed");
 
 const TOTAL_CARDS = 30;
+const MAX_LIVES = 3;
 const PEEK_COST = 500;
 const REPLACE_COST = 300;
 const PEEK_LIMIT = 3;
@@ -15,6 +17,7 @@ const REPLACE_LIMIT = 5;
 let deck = [];
 let fullDeck = [];
 let score = 300;
+let lives = MAX_LIVES;
 let running = false;
 let revealedCards = [];
 let currentCard = null;
@@ -39,8 +42,18 @@ function buildDeck() {
   for (let i = 0; i < 4; i += 1) deck.push({ rank: "K" });
   for (let i = 0; i < 3; i += 1) deck.push({ rank: "Q" });
   for (let i = 0; i < 2; i += 1) deck.push({ rank: "Joker" });
+  for (let i = 0; i < 2; i += 1) deck.push({ rank: "Assassin" });
 
   return deck.slice(0, TOTAL_CARDS);
+}
+
+function refillDeck() {
+  if (deck.length > 0) return true;
+
+  fullDeck = buildDeck();
+  deck = [...fullDeck];
+  shuffle(deck);
+  return deck.length > 0;
 }
 
 function shuffle(array) {
@@ -52,6 +65,7 @@ function shuffle(array) {
 
 function scoreForCard(card) {
   if (card.rank === "Joker") return -1000;
+  if (card.rank === "Assassin") return -500;
   if (card.rank === "A") return 500;
   if (card.rank === "K" || card.rank === "Q") return 0;
   return 100;
@@ -59,6 +73,7 @@ function scoreForCard(card) {
 
 function displayCard(card) {
   if (card.rank === "Joker") return "🃏 Joker";
+  if (card.rank === "Assassin") return "🗡️ Assassin";
   return `${card.rank}${card.suit ?? ""}`;
 }
 
@@ -71,8 +86,10 @@ function renderCardGrid() {
     const peekedCard = peekedCards[index];
     const isRevealed = Boolean(revealedCard);
     const isPeeked = Boolean(peekedCard);
+    const activeCard = revealedCard ?? peekedCard;
+    const isAssassin = activeCard?.rank === "Assassin";
     const cardEl = document.createElement("div");
-    cardEl.className = `mini-card${isRevealed ? " revealed" : ""}${isPeeked ? " peeked" : ""}`;
+    cardEl.className = `mini-card${isRevealed ? " revealed" : ""}${isPeeked ? " peeked" : ""}${isAssassin ? " assassin-card" : ""}`;
     cardEl.dataset.index = index;
     const faceText = isRevealed ? displayCard(revealedCard) : isPeeked ? displayCard(peekedCard) : "🂠";
     cardEl.innerHTML = `<div class="mini-face">${faceText}</div>`;
@@ -105,7 +122,7 @@ function renderCardGrid() {
 function revealCardAtSlot(slotIndex = -1) {
   const targetIndex = slotIndex >= 0 ? slotIndex : revealedCards.findIndex((card) => card === null);
   if (targetIndex < 0 || revealedCards[targetIndex]) return null;
-  if (deck.length === 0) return null;
+  if (!refillDeck()) return null;
 
   const card = deck.pop();
   revealedCards[targetIndex] = card;
@@ -116,6 +133,16 @@ function revealCardAtSlot(slotIndex = -1) {
 function updateUI() {
   if (scoreEl) scoreEl.textContent = score;
   if (remainingEl) remainingEl.textContent = deck.length;
+
+  if (livesEl) {
+    const fullHearts = Math.floor(lives);
+    const hasHalfHeart = lives % 1 >= 0.5;
+    const emptyHearts = MAX_LIVES - fullHearts - (hasHalfHeart ? 1 : 0);
+    let hearts = "♥".repeat(fullHearts);
+    if (hasHalfHeart) hearts += "🖤";
+    hearts += "♡".repeat(Math.max(0, emptyHearts));
+    livesEl.textContent = hearts || "♡♡♡";
+  }
 }
 
 function updateShopUI() {
@@ -144,7 +171,12 @@ function handleCard(card) {
 
   if (card.rank === "Joker") {
     score += points;
-    if (messageEl) messageEl.textContent = `조커를 뒤집었습니다! ${points}점 적용.`;
+    lives -= 1;
+    if (messageEl) messageEl.textContent = `조커를 뒤집었습니다! ${points}점 적용. 목숨 1개 차감.`;
+  } else if (card.rank === "Assassin") {
+    score += points;
+    lives -= 0.5;
+    if (messageEl) messageEl.textContent = `암살자! -500점, 목숨 0.5개 차감.`;
   } else if (card.rank === "A") {
     score += points;
     if (messageEl) messageEl.textContent = `에이스! +500점! 현재 점수: ${score}`;
@@ -179,19 +211,24 @@ function handleCard(card) {
   updateUI();
   updateShopUI();
 
+  if (lives <= 0) {
+    finishGame("목숨이 모두 소진되어 게임이 끝났습니다.");
+    return;
+  }
+
   if (score <= 0) {
     finishGame("점수가 0 이하가 되어 게임이 끝났습니다.");
     return;
   }
 
   if (deck.length === 0) {
-    finishGame("모든 카드를 뒤집었습니다.");
+    refillDeck();
   }
 }
 
 function handlePeekItem(slotIndex, cardEl) {
   if (!running) return;
-  if (deck.length === 0) {
+  if (!refillDeck()) {
     pendingItem = null;
     if (messageEl) messageEl.textContent = "더 이상 확인할 카드가 없습니다.";
     updateShopUI();
@@ -221,7 +258,7 @@ function revealPeekedCard(slotIndex) {
 
 function handleReplaceItem(slotIndex, cardEl) {
   if (!running) return;
-  if (deck.length === 0) {
+  if (!refillDeck()) {
     pendingItem = null;
     if (messageEl) messageEl.textContent = "교체할 카드가 더 없습니다.";
     updateShopUI();
@@ -272,7 +309,7 @@ function applyReplaceEffect() {
     if (messageEl) messageEl.textContent = `카드 교체는 ${REPLACE_COST}점이 필요합니다.`;
     return;
   }
-  if (deck.length === 0) {
+  if (!refillDeck()) {
     if (messageEl) messageEl.textContent = "교체할 카드가 더 없습니다.";
     return;
   }
@@ -300,6 +337,7 @@ function startGame() {
   deck = [...fullDeck];
   shuffle(deck);
   score = 300;
+  lives = MAX_LIVES;
   running = true;
   revealedCards = Array(TOTAL_CARDS).fill(null);
   currentCard = null;

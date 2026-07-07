@@ -45,7 +45,7 @@ h1 {
 
 .status-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
 }
 
@@ -69,6 +69,12 @@ h1 {
   margin: 0;
   font-size: 1.4rem;
   line-height: 1.4;
+}
+
+.lives-display {
+  font-size: 1.5rem;
+  letter-spacing: 0.12em;
+  color: #dc2626;
 }
 
 .controls {
@@ -202,6 +208,16 @@ button:disabled {
   font-size: 0.95rem;
   font-weight: 700;
   color: #111827;
+}
+
+.mini-card.assassin-card.revealed {
+  background: linear-gradient(135deg, #111827 0%, #334155 100%);
+  color: #fef2f2;
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.mini-card.assassin-card.revealed .mini-face {
+  color: #fef2f2;
 }
 
 .mini-card.peeked {
@@ -374,8 +390,9 @@ button:disabled {
 }
 
 .mini-card.revealed {
-  background: linear-gradient(135deg,#1d4ed8,#2563eb);
-  color: #eff6ff;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 45%, #f1f5f9 100%);
+  color: #111827;
+  border: 1px solid rgba(15, 23, 42, 0.12);
 }
 
 .mini-card .mini-face {
