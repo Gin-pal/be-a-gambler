@@ -143,6 +143,29 @@ button:disabled {
   font-size: 1.2rem;
 }
 
+.ranking-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.ranking-controls input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+}
+
+.secondary-btn {
+  background: #4b5563;
+}
+
+.secondary-btn:hover {
+  background: #374151;
+}
+
 .ranking-list {
   list-style: none;
   padding: 0;
@@ -207,6 +230,10 @@ button:disabled {
   .ranking-item {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .ranking-controls {
+    flex-direction: column;
   }
 }
 
@@ -279,6 +306,11 @@ button:disabled {
   font-size: 0.95rem;
   font-weight: 700;
   color: #111827;
+  opacity: 1;
+}
+
+.mini-card.face-down .mini-face {
+  opacity: 0;
 }
 
 .mini-card.assassin-card.revealed {
@@ -304,6 +336,7 @@ button:disabled {
 .mini-card.flipping {
   animation: card-flip 0.5s ease-in-out;
   transform-style: preserve-3d;
+  perspective: 1000px;
 }
 
 @keyframes card-replace-motion {

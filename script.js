@@ -8,6 +8,8 @@ const replaceBtn = document.getElementById("replaceBtn");
 const peekUsedEl = document.getElementById("peekUsed");
 const replaceUsedEl = document.getElementById("replaceUsed");
 const rankingListEl = document.getElementById("rankingList");
+const nicknameInputEl = document.getElementById("nicknameInput");
+const saveRankingBtnEl = document.getElementById("saveRankingBtn");
 
 const TOTAL_CARDS = 30;
 const RANKING_STORAGE_KEY = "be-a-gambler-rankings";
@@ -121,7 +123,7 @@ function syncRanking() {
   if (!activeRankingEntry) {
     activeRankingEntry = {
       id: Date.now(),
-      name: `플레이어 ${rankingEntries.length + 1}`,
+      name: nicknameInputEl?.value?.trim() || `플레이어 ${rankingEntries.length + 1}`,
       score,
       lives,
       status: running ? "진행중" : "종료",
@@ -142,6 +144,43 @@ function syncRanking() {
 
   saveRankings();
   renderRankings();
+}
+
+function registerRanking() {
+  const nickname = nicknameInputEl?.value?.trim();
+  if (!nickname) {
+    if (messageEl) messageEl.textContent = "닉네임을 입력한 뒤 등록해주세요.";
+    return;
+  }
+
+  if (!activeRankingEntry) {
+    activeRankingEntry = {
+      id: Date.now(),
+      name: nickname,
+      score,
+      lives,
+      status: running ? "진행중" : "종료",
+      timestamp: new Date().toLocaleString("ko-KR"),
+    };
+  } else {
+    activeRankingEntry.name = nickname;
+  }
+
+  activeRankingEntry.score = score;
+  activeRankingEntry.lives = lives;
+  activeRankingEntry.status = running ? "진행중" : "종료";
+  activeRankingEntry.timestamp = new Date().toLocaleString("ko-KR");
+
+  rankingEntries = [
+    ...rankingEntries.filter((entry) => entry.id !== activeRankingEntry.id),
+    activeRankingEntry,
+  ].sort((a, b) => b.score - a.score)
+    .slice(0, RANKING_LIMIT);
+
+  saveRankings();
+  renderRankings();
+
+  if (messageEl) messageEl.textContent = `${nickname} 님이 랭킹에 등록되었습니다.`;
 }
 
 function scoreForCard(card) {
@@ -169,13 +208,14 @@ function renderCardGrid() {
     const isRevealed = Boolean(revealedCard);
     const isPeeked = Boolean(peekedCard);
     const hasHiddenReplacement = Boolean(hiddenCard);
+    const isFaceDown = !isRevealed && !isPeeked && !hasHiddenReplacement;
     const activeCard = revealedCard ?? peekedCard;
     const isAssassin = activeCard?.rank === "Assassin";
     const shouldAnimate = cardFlipAnimations[index];
     const cardEl = document.createElement("div");
-    cardEl.className = `mini-card${isRevealed ? " revealed" : ""}${isPeeked ? " peeked" : ""}${isAssassin ? " assassin-card" : ""}${shouldAnimate ? " flipping" : ""}`;
+    cardEl.className = `mini-card${isRevealed ? " revealed" : ""}${isPeeked ? " peeked" : ""}${isFaceDown ? " face-down" : ""}${isAssassin ? " assassin-card" : ""}${shouldAnimate ? " flipping" : ""}`;
     cardEl.dataset.index = index;
-    const faceText = isRevealed ? displayCard(revealedCard) : isPeeked ? displayCard(peekedCard) : "🂠";
+    const faceText = isRevealed ? displayCard(revealedCard) : isPeeked ? displayCard(peekedCard) : "";
     cardEl.innerHTML = `<div class="mini-face">${faceText}</div>`;
 
     cardEl.addEventListener("click", () => {
@@ -511,6 +551,10 @@ if (peekBtn) {
 
 if (replaceBtn) {
   replaceBtn.addEventListener("click", applyReplaceEffect);
+}
+
+if (saveRankingBtnEl) {
+  saveRankingBtnEl.addEventListener("click", registerRanking);
 }
 
 if (document.readyState === "loading") {
