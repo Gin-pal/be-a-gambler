@@ -7,8 +7,11 @@ const peekBtn = document.getElementById("peekBtn");
 const replaceBtn = document.getElementById("replaceBtn");
 const peekUsedEl = document.getElementById("peekUsed");
 const replaceUsedEl = document.getElementById("replaceUsed");
+const rankingListEl = document.getElementById("rankingList");
 
 const TOTAL_CARDS = 30;
+const RANKING_STORAGE_KEY = "be-a-gambler-rankings";
+const RANKING_LIMIT = 20;
 const MAX_LIVES = 3;
 const PEEK_COST = 500;
 const REPLACE_COST = 300;
@@ -25,8 +28,11 @@ let peekUsed = 0;
 let replaceUsed = 0;
 let pendingItem = null;
 let peekedCards = [];
+let hiddenCards = [];
 let cardReplacementTimers = [];
 let cardFlipAnimations = [];
+let rankingEntries = [];
+let activeRankingEntry = null;
 
 function buildDeck() {
   const deck = [];
@@ -65,6 +71,79 @@ function shuffle(array) {
   }
 }
 
+function loadRankings() {
+  try {
+    const stored = window.localStorage.getItem(RANKING_STORAGE_KEY);
+    const parsed = stored ? JSON.parse(stored) : [];
+    rankingEntries = Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    rankingEntries = [];
+  }
+
+  rankingEntries.sort((a, b) => b.score - a.score);
+  rankingEntries = rankingEntries.slice(0, RANKING_LIMIT);
+}
+
+function saveRankings() {
+  try {
+    window.localStorage.setItem(RANKING_STORAGE_KEY, JSON.stringify(rankingEntries));
+  } catch (error) {
+    // Ignore storage errors.
+  }
+}
+
+function renderRankings() {
+  if (!rankingListEl) return;
+
+  if (!rankingEntries.length) {
+    rankingListEl.innerHTML = '<li class="ranking-empty">아직 저장된 기록이 없습니다.</li>';
+    return;
+  }
+
+  rankingListEl.innerHTML = rankingEntries
+    .map((entry, index) => {
+      const isActive = activeRankingEntry && entry.id === activeRankingEntry.id;
+      return `
+        <li class="ranking-item${isActive ? " active" : ""}">
+          <span class="ranking-rank">${index + 1}</span>
+          <div class="ranking-meta">
+            <strong>${entry.name}</strong>
+            <small>${entry.status} · ${entry.timestamp}</small>
+          </div>
+          <span class="ranking-score">${entry.score}점</span>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+function syncRanking() {
+  if (!activeRankingEntry) {
+    activeRankingEntry = {
+      id: Date.now(),
+      name: `플레이어 ${rankingEntries.length + 1}`,
+      score,
+      lives,
+      status: running ? "진행중" : "종료",
+      timestamp: new Date().toLocaleString("ko-KR"),
+    };
+  }
+
+  activeRankingEntry.score = score;
+  activeRankingEntry.lives = lives;
+  activeRankingEntry.status = running ? "진행중" : "종료";
+  activeRankingEntry.timestamp = new Date().toLocaleString("ko-KR");
+
+  rankingEntries = [
+    ...rankingEntries.filter((entry) => entry.id !== activeRankingEntry.id),
+    activeRankingEntry,
+  ].sort((a, b) => b.score - a.score)
+    .slice(0, RANKING_LIMIT);
+
+  saveRankings();
+  renderRankings();
+}
+
 function scoreForCard(card) {
   if (card.rank === "Joker") return -1000;
   if (card.rank === "Assassin") return -500;
@@ -86,8 +165,10 @@ function renderCardGrid() {
   for (let index = 0; index < TOTAL_CARDS; index += 1) {
     const revealedCard = revealedCards[index];
     const peekedCard = peekedCards[index];
+    const hiddenCard = hiddenCards[index];
     const isRevealed = Boolean(revealedCard);
     const isPeeked = Boolean(peekedCard);
+    const hasHiddenReplacement = Boolean(hiddenCard);
     const activeCard = revealedCard ?? peekedCard;
     const isAssassin = activeCard?.rank === "Assassin";
     const shouldAnimate = cardFlipAnimations[index];
@@ -106,6 +187,11 @@ function renderCardGrid() {
         } else if (pendingItem === "replace") {
           handleReplaceItem(index, cardEl);
         }
+        return;
+      }
+
+      if (hasHiddenReplacement) {
+        revealHiddenCard(index);
         return;
       }
 
@@ -157,6 +243,7 @@ function revealCardAtSlot(slotIndex = -1) {
   if (!refillDeck()) return null;
 
   const card = deck.pop();
+  hiddenCards[targetIndex] = null;
   revealedCards[targetIndex] = card;
   queueCardFlipAnimation(targetIndex);
   scheduleCardReplacement(targetIndex, card);
@@ -177,6 +264,8 @@ function updateUI() {
     hearts += "♡".repeat(Math.max(0, emptyHearts));
     livesEl.textContent = hearts || "♡♡♡";
   }
+
+  syncRanking();
 }
 
 function updateShopUI() {
@@ -196,6 +285,7 @@ function finishGame(reason) {
   running = false;
   updateShopUI();
   if (messageEl) messageEl.textContent = reason;
+  syncRanking();
 }
 
 function handleCard(card) {
@@ -285,6 +375,19 @@ function handlePeekItem(slotIndex, cardEl) {
   updateShopUI();
 }
 
+function revealHiddenCard(slotIndex) {
+  const hiddenCard = hiddenCards[slotIndex];
+  if (!hiddenCard) return;
+
+  hiddenCards[slotIndex] = null;
+  revealedCards[slotIndex] = hiddenCard;
+  queueCardFlipAnimation(slotIndex);
+  scheduleCardReplacement(slotIndex, hiddenCard);
+  renderCardGrid();
+  currentCard = hiddenCard;
+  handleCard(hiddenCard);
+}
+
 function revealPeekedCard(slotIndex) {
   const peekCard = peekedCards[slotIndex];
   if (!peekCard) return;
@@ -313,11 +416,12 @@ function handleReplaceItem(slotIndex, cardEl) {
   window.setTimeout(() => {
     const randomIndex = Math.floor(Math.random() * deck.length);
     const replacement = deck.splice(randomIndex, 1)[0];
-    revealedCards[slotIndex] = replacement;
-    currentCard = replacement;
+    revealedCards[slotIndex] = null;
+    peekedCards[slotIndex] = null;
+    hiddenCards[slotIndex] = replacement;
+    currentCard = null;
     queueCardFlipAnimation(slotIndex);
-    scheduleCardReplacement(slotIndex, replacement);
-    if (messageEl) messageEl.textContent = `카드 교체! 클릭한 카드가 ${displayCard(replacement)}로 바뀌었습니다.`;
+    if (messageEl) messageEl.textContent = `카드 교체! 새 카드가 뒷면으로 놓였습니다.`;
     renderCardGrid();
     updateUI();
     updateShopUI();
@@ -389,8 +493,10 @@ function startGame() {
   replaceUsed = 0;
   pendingItem = null;
   peekedCards = Array(TOTAL_CARDS).fill(null);
+  hiddenCards = Array(TOTAL_CARDS).fill(null);
   cardReplacementTimers = Array(TOTAL_CARDS).fill(null);
   cardFlipAnimations = Array(TOTAL_CARDS).fill(false);
+  activeRankingEntry = null;
 
   if (messageEl) messageEl.textContent = "게임이 시작되었습니다. 카드를 클릭해 보세요.";
 
@@ -407,4 +513,14 @@ if (replaceBtn) {
   replaceBtn.addEventListener("click", applyReplaceEffect);
 }
 
-startGame();
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    loadRankings();
+    renderRankings();
+    startGame();
+  });
+} else {
+  loadRankings();
+  renderRankings();
+  startGame();
+}
